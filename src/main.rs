@@ -172,7 +172,6 @@ fn create_paragraph() -> String {
     }
 
     let para_string = new_arr.join(" ");
-    println!("{}", para_string);
     return para_string;
 }
 

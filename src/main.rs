@@ -7,13 +7,22 @@ use serde::Serialize;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
+use uuid::Uuid;
 #[derive(Debug, Serialize)]
 struct ArticleTitle {
     title: String,
     subtitle: String,
     date: String,
     text: String,
+    id: String,
 }
+
+// impl ArticleTitle {
+//     fn new() -> Self {
+//         Object(OBJECT_COUNTER.fetch_add(1, Ordering::SeqCst))
+//     }
+// }
+
 #[derive(Debug, Serialize)]
 struct RandomWord {
     word: String,
@@ -25,7 +34,7 @@ fn create_random_date() -> DateTime<Utc> {
         NaiveDateTime::from_timestamp(1_000_000_000 + rand_time as i64, 0),
         Utc,
     );
-    return dt;
+    dt
 }
 
 fn generate_random_number(min: u32, max: u32) -> u32 {
@@ -42,7 +51,7 @@ fn get_random_word(number: u8) -> RandomWord {
     let word_obj = RandomWord {
         word: single_word.to_string(),
     };
-    return word_obj;
+    word_obj
 }
 
 fn get_word(req: HttpRequest) -> HttpResponse {
@@ -60,7 +69,7 @@ fn get_article(req: HttpRequest) -> HttpResponse {
         let article_obj = get_title_subtitle();
         articles.push(article_obj);
     }
-    return HttpResponse::Ok().json(articles);
+    HttpResponse::Ok().json(articles)
 }
 
 fn get_fulltext(req: HttpRequest) -> HttpResponse {
@@ -73,7 +82,7 @@ fn get_fulltext(req: HttpRequest) -> HttpResponse {
         article_obj.text = text;
         articles.push(article_obj);
     }
-    return HttpResponse::Ok().json(articles);
+    HttpResponse::Ok().json(articles)
 }
 
 fn some_kind_of_uppercase_first_letter(s: &str) -> String {
@@ -86,9 +95,11 @@ fn some_kind_of_uppercase_first_letter(s: &str) -> String {
 
 fn create_title(title: String) -> String {
     let mut vec: Vec<String> = Vec::new();
+    let random = generate_random_number(6, 12);
+    for _i in 0..random {
+        let word_length = generate_random_number(3, 15);
 
-    for i in 3..15 {
-        let path = format!("src/random_words/{}-letters.txt", i.to_string());
+        let path = format!("src/random_words/{}-letters.txt", word_length.to_string());
 
         let mut result = read_file_line_by_line(&path);
         vec.append(&mut result);
@@ -112,20 +123,27 @@ fn create_title(title: String) -> String {
         _ => "",
     };
 
-    return final_tital.to_string();
+    final_tital.to_string()
 }
 
 fn get_title_subtitle() -> ArticleTitle {
     let title = create_title("title".to_string());
     let subtitle = create_title("subtitle".to_string());
     let date = create_random_date().to_string();
+    let id = create_uuid().to_string();
     let article = ArticleTitle {
         title,
         subtitle,
         date,
         text: "".to_string(),
+        id,
     };
-    return article;
+    article
+}
+
+fn create_uuid() -> Uuid {
+    let id = Uuid::new_v4();
+    id
 }
 
 fn read_file_line_by_line(filepath: &str) -> Vec<String> {
@@ -141,7 +159,7 @@ fn read_file_line_by_line(filepath: &str) -> Vec<String> {
 
     vec.push(random);
 
-    return vec;
+    vec
 }
 
 fn create_paragraph() -> String {
@@ -172,7 +190,7 @@ fn create_paragraph() -> String {
     }
 
     let para_string = new_arr.join(" ");
-    return para_string;
+    para_string
 }
 
 fn main() {

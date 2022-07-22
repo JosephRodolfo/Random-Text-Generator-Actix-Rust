@@ -8,6 +8,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 use uuid::Uuid;
+
 #[derive(Debug, Serialize)]
 struct ArticleTitle {
     title: String,
@@ -55,7 +56,6 @@ fn get_random_word(number: u8) -> RandomWord {
 }
 
 fn get_word(req: HttpRequest) -> HttpResponse {
-    // HttpResponse::Ok().content_type("text/html").body("Test")
     let num_letters: u8 = req.match_info().get("number").unwrap().parse().unwrap();
     let word = get_random_word(num_letters);
     HttpResponse::Ok().json(word)
@@ -165,18 +165,15 @@ fn read_file_line_by_line(filepath: &str) -> Vec<String> {
 fn create_paragraph() -> String {
     let mut random = Vec::new();
 
-    for i in 3..15 {
-        let path = format!("src/random_words/{}-letters.txt", i.to_string());
+    let path = "src/random_words/all-words.txt";
 
-        let path = Path::new(&path);
-        let file = File::open(path).expect("Cannot open file.txt");
-        let reader = BufReader::new(&file);
-        let lines = reader.lines().map(|l| l.expect("Couldn't read line"));
-        let mut new_words = lines.choose_multiple(&mut rand::thread_rng(), 100);
-        random.append(&mut new_words);
-    }
+    let path = Path::new(&path);
+    let file = File::open(path).expect("Cannot open file.txt");
+    let reader = BufReader::new(&file);
+    let lines = reader.lines().map(|l| l.expect("Couldn't read line"));
+    let mut new_words = lines.choose_multiple(&mut rand::thread_rng(), 1500);
+    random.append(&mut new_words);
 
-    random.shuffle(&mut thread_rng());
     let mut new_arr = random;
     let length = new_arr.len();
     new_arr[0] = some_kind_of_uppercase_first_letter(&new_arr[0]);
@@ -194,6 +191,7 @@ fn create_paragraph() -> String {
 }
 
 fn main() {
+    let port = std::env::var("PORT").unwrap_or("127.0.0.1:3000".to_string());
     let server = HttpServer::new(|| {
         App::new()
             .route("/word/{number}", web::get().to(get_word))
@@ -202,8 +200,8 @@ fn main() {
     });
     println!("Serving on http://localhost:3000...");
     server
-        .bind("127.0.0.1:3000")
+        .bind(port)
         .expect("error binding server to address")
         .run()
-        .expect("error running server")
+        .expect("error running server");
 }

@@ -1,5 +1,6 @@
 // use actix_web::http::header::Date;
-use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer};
+use actix_cors::Cors;
+use actix_web::{get, http, App, HttpRequest, HttpResponse, Error, HttpServer};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use rand::prelude::{IteratorRandom, SliceRandom};
 use rand::{thread_rng, Rng};
@@ -18,11 +19,6 @@ struct ArticleTitle {
     id: String,
 }
 
-// impl ArticleTitle {
-//     fn new() -> Self {
-//         Object(OBJECT_COUNTER.fetch_add(1, Ordering::SeqCst))
-//     }
-// }
 
 #[derive(Debug, Serialize)]
 struct RandomWord {
@@ -55,35 +51,6 @@ fn get_random_word(number: u8) -> RandomWord {
     word_obj
 }
 
-fn get_word(req: HttpRequest) -> HttpResponse {
-    let num_letters: u8 = req.match_info().get("number").unwrap().parse().unwrap();
-    let word = get_random_word(num_letters);
-    HttpResponse::Ok().json(word)
-}
-
-fn get_article(req: HttpRequest) -> HttpResponse {
-    let mut articles: Vec<ArticleTitle> = Vec::new();
-    let num_articles: u8 = req.match_info().get("number").unwrap().parse().unwrap();
-
-    for _i in 0..num_articles {
-        let article_obj = get_title_subtitle();
-        articles.push(article_obj);
-    }
-    HttpResponse::Ok().json(articles)
-}
-
-fn get_fulltext(req: HttpRequest) -> HttpResponse {
-    let mut articles: Vec<ArticleTitle> = Vec::new();
-    let num_articles: u8 = req.match_info().get("number").unwrap().parse().unwrap();
-
-    for _i in 0..num_articles {
-        let mut article_obj = get_title_subtitle();
-        let text = create_paragraph();
-        article_obj.text = text;
-        articles.push(article_obj);
-    }
-    HttpResponse::Ok().json(articles)
-}
 
 fn some_kind_of_uppercase_first_letter(s: &str) -> String {
     let mut c = s.chars();
@@ -190,18 +157,70 @@ fn create_paragraph() -> String {
     para_string
 }
 
-fn main() {
-    let port = std::env::var("PORT").unwrap_or("127.0.0.1:3000".to_string());
-    let server = HttpServer::new(|| {
-        App::new()
-            .route("/word/{number}", web::get().to(get_word))
-            .route("/article/{number}", web::get().to(get_article))
-            .route("/fulltext/{number}", web::get().to(get_fulltext))
-    });
-    println!("Serving on http://localhost:3000...");
-    server
-        .bind(port)
-        .expect("error binding server to address")
-        .run()
-        .expect("error running server");
+#[get("/word/{number}")]
+async fn get_word(req: HttpRequest) -> Result<HttpResponse, Error> {
+    let num_letters: u8 = req.match_info().get("number").unwrap().parse().unwrap();
+    let word = get_random_word(num_letters);
+    Ok(HttpResponse::Ok().json(word))
 }
+#[get("/article/{number}")]
+async fn get_article(req: HttpRequest) -> Result<HttpResponse, Error> {
+    let mut articles: Vec<ArticleTitle> = Vec::new();
+    let num_articles: u8 = req.match_info().get("number").unwrap().parse().unwrap();
+
+    for _i in 0..num_articles {
+        let article_obj = get_title_subtitle();
+        articles.push(article_obj);
+    }
+    Ok(HttpResponse::Ok().json(articles))
+}
+
+#[get("/fulltext/{number}")]
+async fn get_fulltext(req: HttpRequest) -> Result<HttpResponse, Error> {
+    let mut articles: Vec<ArticleTitle> = Vec::new();
+    let num_articles: u8 = req.match_info().get("number").unwrap().parse().unwrap();
+
+    for _i in 0..num_articles {
+        let mut article_obj = get_title_subtitle();
+        let text = create_paragraph();
+        article_obj.text = text;
+        articles.push(article_obj);
+    }
+    Ok(HttpResponse::Ok().json(articles))
+}
+
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+
+    let port: String = std::env::var("PORT")
+        .unwrap_or_else(|_| "3000".to_string())
+        .parse()
+        .expect("PORT must be a number");
+    HttpServer::new(|| {
+        let cors = Cors::permissive() //default; will switch permissive for github pages or wherever this is ultimately being called from
+              .allowed_origin("https://www.rust-lang.org/")
+              .allowed_origin_fn(|origin, _req_head| {
+                  origin.as_bytes().ends_with(b".rust-lang.org")
+              })
+              .allowed_methods(vec!["GET"])
+              .allowed_headers(vec![http::header::AUTHORIZATION, http::header::ACCEPT])
+              .allowed_header(http::header::CONTENT_TYPE)
+              .max_age(3600);
+
+        App::new()
+            .wrap(cors)
+            .service(get_word)
+            .service(get_fulltext)
+            .service(get_article)
+
+    })
+    .bind(("0.0.0.0", port.parse::<u16>().unwrap()))?
+    .run()
+    .await
+    .expect("error binding to server");
+
+    Ok(())
+}
+
+// "127.0.0.1"

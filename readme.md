@@ -9,4 +9,7 @@ This is a simple project to learn more about Rust. It's an Actix web server with
 
  - /fulltext/{number}: Generates a JSON article object with properties with randomly generated values, "title", "subtitle", "fulltext", and "date". 
 
+## Try it out 
+The API is deployed to Heroku using this buildpack, https://github.com/emk/heroku-buildpack-rust, here:
 
+ - https://gentle-sea-27356.herokuapp.com/
